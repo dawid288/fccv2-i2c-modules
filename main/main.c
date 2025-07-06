@@ -12,8 +12,6 @@
 #include "esp_chip_info.h"
 #include "esp_flash.h"
 #include "esp_system.h"
+#include "bmp280.h"
 
-void app_main(void)
-{
-    
-}
+void app_main(void) { }
