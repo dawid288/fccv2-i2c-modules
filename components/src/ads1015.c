@@ -30,7 +30,7 @@ void ads1015_read(ads1015_type_t* ads1015_dev, uint8_t reg, uint8_t* data, size_
     i2c_read(ads1015_dev->i2c_dev_handle, reg, data, data_len);
 }
 
-int16_t ads1015_read_channel_single_ended(ads1015_type_t* ads1015_dev, ads1015_adc_channel_t channel)
+int16_t ads1015_read_channel_single_shot(ads1015_type_t* ads1015_dev, ads1015_adc_channel_t channel)
 {
     if (channel > 3)
         channel = 3;
@@ -45,10 +45,11 @@ int16_t ads1015_read_channel_single_ended(ads1015_type_t* ads1015_dev, ads1015_a
     uint8_t config_reg[2];
 
     ads1015_dev->config.mux_config = adc_single_ended[channel];
+    ads1015_dev->config.device_mode = SINGLE_SHOT;
 
     ads1015_read(ads1015_dev, CONFIG_REGISTER, config_reg, sizeof(config_reg));
-    config_reg[0] &= 0x0F;
-    config_reg[0] |= (ads1015_dev->config.mux_config << 4) | (START_SINGLE_CONV << 7);
+    config_reg[0] &= 0x0E;
+    config_reg[0] |= (ads1015_dev->config.mux_config << 4) | (START_SINGLE_CONV << 7) | ads1015_dev->config.device_mode;
 
     ads1015_write(ads1015_dev, CONFIG_REGISTER, config_reg);
 
@@ -69,4 +70,20 @@ int16_t ads1015_read_channel_single_ended(ads1015_type_t* ads1015_dev, ads1015_a
         result |= 0xF000;
     }
     return result;
+}
+
+float ads1015_convert_raw_value_to_voltage(ads1015_type_t* ads1015_dev, int16_t raw_value)
+{
+    const float lsb_mv[] = {
+        0.003f,    // ±6.144V
+        0.002f,    // ±4.096V
+        0.001f,    // ±2.048V
+        0.0005f,   // ±1.024V
+        0.00025f,  // ±0.512V
+        0.000125f, // ±0.256V
+    };
+
+    if (ads1015_dev->config.gain > 5)
+        ads1015_dev->config.gain = 5;
+    return raw_value * lsb_mv[ads1015_dev->config.gain];
 }
