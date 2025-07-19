@@ -3,7 +3,7 @@
 static uint8_t bmp280_get_id(bmp280_type_t* bmp280_dev)
 {
     uint8_t id;
-    bmp280_read(bmp280_dev, BMP280_CHIP_ID_REG, &id, 1);
+    bmp280_read_reg(bmp280_dev, BMP280_CHIP_ID_REG, &id, 1);
 
     return id;
 }
@@ -12,12 +12,12 @@ void bmp280_init(bmp280_type_t* bmp280_dev)
 {
     bmp280_dev->i2c_mst_handle = fccu_i2c_mst_handle;
     bmp280_dev->i2c_addr = BMP280_I2C_ADDRESS;
-    i2c_device_config(bmp280_dev->i2c_mst_handle, bmp280_dev->i2c_dev_handle, bmp280_dev->i2c_addr);
+    i2c_device_config(bmp280_dev->i2c_mst_handle, &bmp280_dev->i2c_dev_handle, bmp280_dev->i2c_addr);
 
     if (bmp280_get_id(bmp280_dev) == I_AM_BMP280)
-        printf("found icm20600 device\r\n");
+        printf("found bmp280 device\r\n");
     else
-        printf("Error, icm20600 not found\r\n");
+        printf("Error, bmp280 not found\r\n");
 
     bmp280_soft_reset(bmp280_dev);
     bmp280_calibrate(bmp280_dev);
@@ -29,35 +29,37 @@ void bmp280_init(bmp280_type_t* bmp280_dev)
     uint8_t ctrl_meas = (bmp280_dev->ctrl_meas.osrs_tmp << 5) | (bmp280_dev->ctrl_meas.osrs_press << 2)
                         | bmp280_dev->ctrl_meas.pwr_mode;
 
-    bmp280_write(bmp280_dev, BMP280_CTRL_MEAS_REG, ctrl_meas);
+    bmp280_write_reg(bmp280_dev, BMP280_CTRL_MEAS_REG, &ctrl_meas, sizeof(ctrl_meas));
 
     bmp280_dev->config.t_sb = T_SB_500_ms;
     bmp280_dev->config.filter = FILTER_16;
 
     uint8_t config = (bmp280_dev->config.t_sb << 5) | (bmp280_dev->config.filter << 2);
 
-    bmp280_write(bmp280_dev, BMP280_CONFIG_REG, config);
+    bmp280_write_reg(bmp280_dev, BMP280_CONFIG_REG, &config, sizeof(config));
 }
 
-void bmp280_write(bmp280_type_t* bmp280_dev, uint8_t reg, uint8_t data)
+void bmp280_write_reg(bmp280_type_t* bmp280_dev, uint8_t reg, uint8_t* data, size_t data_len)
 {
-    i2c_write(bmp280_dev->i2c_dev_handle, reg, data);
+    i2c_write(bmp280_dev->i2c_dev_handle, reg, data, data_len);
 }
 
-void bmp280_read(bmp280_type_t* bmp280_dev, uint8_t reg, uint8_t* data, size_t data_len)
+void bmp280_read_reg(bmp280_type_t* bmp280_dev, uint8_t reg, uint8_t* data, size_t data_len)
 {
     i2c_read(bmp280_dev->i2c_dev_handle, reg, data, data_len);
 }
 
 void bmp280_soft_reset(bmp280_type_t* bmp280_dev)
 {
-    bmp280_write(bmp280_dev, BMP280_RESET_REG, BMP280_DO_SOFT_RESET);
+    uint8_t reset = BMP280_DO_SOFT_RESET;
+    bmp280_write_reg(bmp280_dev, BMP280_RESET_REG, &reset, 1);
+    vTaskDelay(pdMS_TO_TICKS(10));
 }
 
 void bmp280_calibrate(bmp280_type_t* bmp280_dev)
 {
     uint8_t data[24];
-    bmp280_read(bmp280_dev, BMP280_CALIB_REG, data, 24);
+    bmp280_read_reg(bmp280_dev, BMP280_CALIB_REG, data, 24);
 
     bmp280_dev->calib.dig_t1 = (data[1] << 8) | data[0];
     bmp280_dev->calib.dig_t2 = (data[3] << 8) | data[2];
@@ -76,14 +78,14 @@ void bmp280_calibrate(bmp280_type_t* bmp280_dev)
 static int32_t bmp280_read_pressure_raw(bmp280_type_t* bmp280_dev)
 {
     uint8_t press_data[3];
-    bmp280_read(bmp280_dev, BMP280_PRESS_MSB_REG, press_data, sizeof(press_data));
+    bmp280_read_reg(bmp280_dev, BMP280_PRESS_MSB_REG, press_data, sizeof(press_data));
     return (press_data[0] << 12) | (press_data[1] << 4) | (press_data[2] >> 4);
 }
 
 static int32_t bmp280_read_temperature_raw(bmp280_type_t* bmp280_dev)
 {
     uint8_t temp_data[3];
-    bmp280_read(bmp280_dev, BMP280_TEMP_MSB_REG, temp_data, sizeof(temp_data));
+    bmp280_read_reg(bmp280_dev, BMP280_TEMP_MSB_REG, temp_data, sizeof(temp_data));
     return (temp_data[0] << 12) | (temp_data[1] << 4) | (temp_data[2] >> 4);
 }
 

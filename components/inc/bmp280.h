@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include "fccu_i2c.h"
 #include "i2c_config.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #define BMP280_I2C_ADDRESS   0x76
 #define BMP280_CHIP_ID_REG   0xD0
@@ -103,8 +105,8 @@ typedef struct bmp280
 } bmp280_type_t;
 
 void bmp280_init(bmp280_type_t* bmp280_dev);
-void bmp280_write(bmp280_type_t* bmp280_dev, uint8_t reg, uint8_t data);
-void bmp280_read(bmp280_type_t* bmp280_dev, uint8_t reg, uint8_t* data, size_t data_len);
+void bmp280_write_reg(bmp280_type_t* bmp280_dev, uint8_t reg, uint8_t* data, size_t data_len);
+void bmp280_read_reg(bmp280_type_t* bmp280_dev, uint8_t reg, uint8_t* data, size_t data_len);
 void bmp280_soft_reset(bmp280_type_t* bmp280_dev);
 void bmp280_calibrate(bmp280_type_t* bmp280_dev);
 void bmp280_read_pressure_temperature(bmp280_type_t* bmp280_dev, bmp280_data_t* data);

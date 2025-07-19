@@ -115,9 +115,10 @@ typedef struct
 } ads1015_type_t;
 
 void ads1015_init(ads1015_type_t* ads1015_dev);
-void ads1015_write(ads1015_type_t* ads1015_dev, uint8_t reg, uint8_t data);
-void ads1015_read(ads1015_type_t* ads1015_dev, uint8_t reg, uint8_t* data, size_t data_len);
-int16_t ads1015_read_channel_single_shot(ads1015_type_t* ads1015_dev, ads1015_adc_channel_t channel);
+void ads1015_write_reg(ads1015_type_t* ads1015_dev, uint8_t reg, uint8_t* data, size_t data_len);
+void ads1015_read_reg(ads1015_type_t* ads1015_dev, uint8_t reg, uint8_t* data, size_t data_len);
+int16_t ads1015_read_channel_raw_single_shot(ads1015_type_t* ads1015_dev, ads1015_adc_channel_t channel);
 float ads1015_convert_raw_value_to_voltage(ads1015_type_t* ads1015_dev, int16_t raw_value);
+float ads1015_read_channel_single_shot(ads1015_type_t* ads1015_dev, ads1015_adc_channel_t channel);
 
 #endif

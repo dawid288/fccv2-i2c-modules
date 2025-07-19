@@ -4,7 +4,7 @@ void ads1015_init(ads1015_type_t* ads1015_dev)
 {
     ads1015_dev->i2c_mst_handle = fccu_i2c_mst_handle;
     ads1015_dev->i2c_addr = ADS1015_I2C_ADDRESS;
-    i2c_device_config(ads1015_dev->i2c_mst_handle, ads1015_dev->i2c_dev_handle, ads1015_dev->i2c_addr);
+    i2c_device_config(ads1015_dev->i2c_mst_handle, &ads1015_dev->i2c_dev_handle, ads1015_dev->i2c_addr);
 
     ads1015_dev->config.mux_config = AIN0;
     ads1015_dev->config.gain = FSR_4_096V;
@@ -17,20 +17,20 @@ void ads1015_init(ads1015_type_t* ads1015_dev)
         = (ads1015_dev->config.mux_config << 4) | (ads1015_dev->config.gain << 1) | ads1015_dev->config.device_mode;
     config_reg[1] = (ads1015_dev->config.data_rate << 5) | (ads1015_dev->comparator.comp_queue);
 
-    ads1015_write(ads1015_dev, CONFIG_REGISTER, config_reg);
+    ads1015_write_reg(ads1015_dev, CONFIG_REGISTER, config_reg, sizeof(config_reg));
 }
 
-void ads1015_write(ads1015_type_t* ads1015_dev, uint8_t reg, uint8_t data)
+void ads1015_write_reg(ads1015_type_t* ads1015_dev, uint8_t reg, uint8_t* data, size_t data_len)
 {
-    i2c_write(ads1015_dev->i2c_dev_handle, reg, data);
+    i2c_write(ads1015_dev->i2c_dev_handle, reg, data, data_len);
 }
 
-void ads1015_read(ads1015_type_t* ads1015_dev, uint8_t reg, uint8_t* data, size_t data_len)
+void ads1015_read_reg(ads1015_type_t* ads1015_dev, uint8_t reg, uint8_t* data, size_t data_len)
 {
     i2c_read(ads1015_dev->i2c_dev_handle, reg, data, data_len);
 }
 
-int16_t ads1015_read_channel_single_shot(ads1015_type_t* ads1015_dev, ads1015_adc_channel_t channel)
+int16_t ads1015_read_channel_raw_single_shot(ads1015_type_t* ads1015_dev, ads1015_adc_channel_t channel)
 {
     if (channel > 3)
         channel = 3;
@@ -47,21 +47,21 @@ int16_t ads1015_read_channel_single_shot(ads1015_type_t* ads1015_dev, ads1015_ad
     ads1015_dev->config.mux_config = adc_single_ended[channel];
     ads1015_dev->config.device_mode = SINGLE_SHOT;
 
-    ads1015_read(ads1015_dev, CONFIG_REGISTER, config_reg, sizeof(config_reg));
+    ads1015_read_reg(ads1015_dev, CONFIG_REGISTER, config_reg, sizeof(config_reg));
     config_reg[0] &= 0x0E;
     config_reg[0] |= (ads1015_dev->config.mux_config << 4) | (START_SINGLE_CONV << 7) | ads1015_dev->config.device_mode;
 
-    ads1015_write(ads1015_dev, CONFIG_REGISTER, config_reg);
+    ads1015_write_reg(ads1015_dev, CONFIG_REGISTER, config_reg, sizeof(config_reg));
 
     do
     {
-        ads1015_read(ads1015_dev, CONFIG_REGISTER, config_reg, sizeof(config_reg));
+        ads1015_read_reg(ads1015_dev, CONFIG_REGISTER, config_reg, sizeof(config_reg));
     }
     while ((config_reg[0] & 0x80) == CONV_IN_PROGRESS);
 
     uint8_t adc_data[2];
 
-    ads1015_read(ads1015_dev, CONVERSION_REGISTER, adc_data, sizeof(adc_data));
+    ads1015_read_reg(ads1015_dev, CONVERSION_REGISTER, adc_data, sizeof(adc_data));
 
     int16_t result = ((adc_data[0] << 8) | adc_data[1]) >> 4;
 
@@ -86,4 +86,10 @@ float ads1015_convert_raw_value_to_voltage(ads1015_type_t* ads1015_dev, int16_t 
     if (ads1015_dev->config.gain > 5)
         ads1015_dev->config.gain = 5;
     return raw_value * lsb_mv[ads1015_dev->config.gain];
+}
+
+float ads1015_read_channel_single_shot(ads1015_type_t* ads1015_dev, ads1015_adc_channel_t channel)
+{
+    return ads1015_convert_raw_value_to_voltage(
+        ads1015_dev, ads1015_read_channel_raw_single_shot(ads1015_dev, channel));
 }
